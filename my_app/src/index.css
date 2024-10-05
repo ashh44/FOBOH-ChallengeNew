@@ -1,3 +1,4 @@
+/* General body styling */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,88 +6,157 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f0f0;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-.product-filter {
+/* Container for all elements */
+.container {
   padding: 20px;
-  background-color: #f7f7f7;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-.product-filter input,
-.product-filter select {
-  margin: 10px 0;
-  padding: 10px;
-  width: 100%;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
-}
-.product-selection {
-  padding: 20px;
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-.product-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-}
-.product-item input {
-  margin-right: 10px;
-}
-.product-item div {
-  flex-grow: 1;
-}
-button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-button:hover {
-  background-color: #0056b3;
-}
-.price-adjustment {
-  padding: 20px;
+  font-family: Arial, sans-serif;
+  max-width: 600px;
+  margin: 30px auto;
   background-color: #f9f9f9;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
 }
-.price-adjustment select,
-.price-adjustment input {
-  margin: 10px 0;
+
+/* Main heading styling */
+.heading {
+  text-align: center;
+  color: #333;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 30px;
+}
+
+/* Radio button container styling */
+.radioContainer {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+}
+
+/* Subheading styling */
+.subheading {
+  text-align: center;
+  color: #555;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+/* Search bar and SKU input container */
+.searchContainer {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+/* Search bar styling */
+.searchBar {
+  flex: 1;
+  margin-right: 10px;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+/* SKU input field styling */
+.skuInput {
+  flex: 1;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+/* Dropdown styling */
+.dropdownContainer {
+  margin-bottom: 20px;
+}
+
+select {
   padding: 10px;
   width: 100%;
-  border-radius: 4px;
+  border-radius: 5px;
   border: 1px solid #ccc;
+  font-size: 16px;
 }
+
+/* Container for the price display */
+.priceContainer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 20px;
+  color: #333;
+  font-weight: bold;
+}
+
+/* Button Styling */
 button {
-  margin-top: 10px;
-  padding: 10px 20px;
-  background-color: #28a745;
+  background-color: #4CAF50;
   color: white;
+  padding: 10px 20px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  font-size: 16px;
 }
+
 button:hover {
-  background-color: #218838;
+  background-color: #45a049;
 }
-.pricing-summary {
-  padding: 20px;
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.radioContainer {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
 }
-.pricing-summary p {
-  font-size: 18px;
-  margin: 10px 0;
+
+/* Styling for each label */
+.radioContainer label {
+  margin: 0.5rem 0;
+  font-family: Arial, sans-serif; /* Change the font if desired */
+  cursor: pointer; /* Change the cursor on hover */
+}
+
+/* Subheading style */
+.subheading {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+/* Container for search input fields */
+.searchContainer {
+  display: flex;
+  flex-direction: column; /* Stack inputs vertically */
+  gap: 0.5rem; /* Space between inputs */
+}
+
+/* Style for search bar input */
+.searchBar {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: border-color 0.3s; /* Smooth border transition */
+}
+
+.searchBar:focus {
+  border-color: #007bff; /* Change border color on focus */
+  outline: none; /* Remove default outline */
+}
+
+/* Style for SKU input */
+.skuInput {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: border-color 0.3s; /* Smooth border transition */
+}
+
+.skuInput:focus {
+  border-color: #007bff; /* Change border color on focus */
+  outline: none; /* Remove default outline */
 }
