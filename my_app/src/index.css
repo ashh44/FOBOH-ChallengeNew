@@ -94,7 +94,7 @@ select {
 
 /* Button Styling */
 button {
-  background-color: #4CAF50;
+  background-color: #5dbf60;
   color: white;
   padding: 10px 20px;
   border: none;
@@ -175,23 +175,23 @@ button:hover {
 
 .resultsTable th,
 .resultsTable td {
-  border: 1px solid #ddd; /* Light border */
+  border: 1px solid #fef9f9; /* Light border */
   padding: 10px; /* Padding for table cells */
   text-align: left; /* Left-align text */
 }
 
 .resultsTable th {
-  background-color: #007bff; /* Blue background for header */
+  background-color: #11a6ad; /* Blue background for header */
   color: white; /* White text for header */
   font-weight: bold; /* Bold font for header */
 }
 
 .resultsTable tr:nth-child(even) {
-  background-color: #f2f2f2; /* Zebra striping */
+  background-color: #fcf7f7; /* Zebra striping */
 }
 
 .resultsTable tr:hover {
-  background-color: #e6f7ff; /* Light blue hover effect */
+  background-color: #bcddeb; /* Light blue hover effect */
 }
 
 /* Total Price Container */
