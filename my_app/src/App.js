@@ -13,10 +13,10 @@ function ProductPriceFetcher() {
   const [error, setError] = useState('');
 
   // New state variables for price adjustment
-  const [baseOnPrice, setBaseOnPrice] = useState('');
-  const [adjustmentMode, setAdjustmentMode] = useState('fixed');
-  const [adjustmentValue, setAdjustmentValue] = useState('');
-  const [adjustmentIncrement, setAdjustmentIncrement] = useState('increase');
+  const [basedOnPrice, setBasedOnPrice] = useState(0); // Default price set to 500
+  const [adjustmentMode, setAdjustmentMode] = useState('fixed'); // Default adjustment mode
+  const [adjustmentValue, setAdjustmentValue] = useState(0); // Default adjustment value
+  const [adjustmentIncrement, setAdjustmentIncrement] = useState('increase'); // Default increment
 
   const categories = ['Wine', 'Beer', 'Liquor & Spirits', 'Cider', 'Premixed & Ready-to-Drink', 'Other'];
   const segments = {
@@ -70,6 +70,25 @@ function ProductPriceFetcher() {
     setSelectedProducts(prevSelected => 
       prevSelected.filter(product => product.id !== productId)
     );
+  };
+
+  const calculateNewPrice = (productPrice) => {
+    let newPrice;
+    const adjustment = adjustmentMode === 'fixed' ? adjustmentValue : (adjustmentValue / 100) * productPrice;
+  
+    if (adjustmentIncrement === 'increase') {
+      newPrice = productPrice + adjustment;
+    } else {
+      newPrice = productPrice - adjustment;
+    }
+    return newPrice.toFixed(2); // Return new price formatted to 2 decimal places
+  };
+  
+  const calculateTotalNewPrice = () => {
+    return selectedProducts.reduce((total, product) => {
+      const newPrice = calculateNewPrice(product.price);
+      return total + parseFloat(newPrice) * product.quantity; // Multiply by quantity
+    }, 0).toFixed(2); // Return total price formatted to 2 decimal places
   };
 
   return (
@@ -127,10 +146,11 @@ function ProductPriceFetcher() {
       </div>
 
       <div className="dropdownContainer">
-        <label>Based On:</label>
-        <select value={baseOnPrice} onChange={(e) => setBaseOnPrice(e.target.value)}>
-          <option value="">Select Base On Price</option>
-          <option value="global">Global Wholesale Price</option>
+        <label>Based On Price:</label>
+        <select value={basedOnPrice} onChange={(e) => setBasedOnPrice(Number(e.target.value))}>
+          <option value="">Select Base Price</option>
+          <option value="">Global Wholesale Price</option>
+          {/* Add more options as needed */}
         </select>
       </div>
 
@@ -148,7 +168,7 @@ function ProductPriceFetcher() {
           type="number" 
           placeholder={adjustmentMode === 'fixed' ? 'Adjustment: $ _____' : 'Adjustment: _____ %'} 
           value={adjustmentValue} 
-          onChange={(e) => setAdjustmentValue(e.target.value)} 
+          onChange={(e) => setAdjustmentValue(Number(e.target.value))} 
           className="adjustmentInput"
         />
       </div>
@@ -167,22 +187,58 @@ function ProductPriceFetcher() {
 
       <button onClick={fetchProducts} className="button">Fetch Products</button>
 
-      <div className="selectedProductsContainer">
-        <h2 className="subheading">Selected Products:</h2>
-        {selectedProducts.length > 0 ? (
-          <ul className="productList">
-            {selectedProducts.map(product => (
-              <li key={product.id} className="productItem">
-                {product.title} - ${product.price} × {product.quantity} = ${product.price * product.quantity} 
-                <button onClick={() => removeProduct(product.id)} className="removeButton">Remove</button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No products selected</p>
-        )}
+      {/* Selected Products and Calculation Results */}
+
+     {/* Selected Products and Calculation Results */}
+     <div className="selectedProductsContainer">
+  <h2 className="subheading">Selected Products:</h2>
+  {selectedProducts.length > 0 ? (
+    <table className="resultsTable">
+      <thead>
+        <tr>
+          <th>Product Title</th>
+          <th>SKU Code</th>
+          <th>Category</th>
+          <th>Based On Price</th>
+          <th>Adjustment</th>
+          <th>New Price</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {selectedProducts.map(product => {
+          const newPrice = calculateNewPrice(product.price);
+          return (
+            <tr key={product.id}>
+              <td>{product.title}</td>
+              <td>{product.sku}</td>
+              <td>{product.category}</td>
+              <td>${product.price.toFixed(2)}</td> {/* Use product.price for Based On Price */}
+              <td>${adjustmentValue.toFixed(2)}</td>
+              <td>${newPrice}</td>
+              <td>
+                <button onClick={() => removeProduct(product.id)} className="removeButton">
+                  Remove
+                </button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  ) : (
+    <p>No products selected</p>
+  )}
+</div>
+
+<div className="totalPriceContainer">
+        <h2>Total New Price: ${calculateTotalNewPrice()}</h2> {/* Show total new price */}
       </div>
+
+      <button className="completeProfileButton">Profile Complete</button>
     </div>
+
+
   );
 }
 
