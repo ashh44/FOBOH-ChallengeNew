@@ -1,125 +1,100 @@
 import React, { useState, useEffect } from 'react';
-import ProductFilter from './components/ProductFilter';
-import ProductSelection from './components/ProductSelection';
-import PriceAdjustment from './components/PriceAdjustment';
-import PricingSummary from './components/PricingSummary';
-import 'bootstrap/dist/css/bootstrap.min.css';
 
-function App() {
-  // Define states
-  const [filters, setFilters] = useState({});
-  const [products, setProducts] = useState([]);
-  const [selectedProducts, setSelectedProducts] = useState([]);
-  const [adjustmentType, setAdjustmentType] = useState('fixed');
-  const [adjustmentValue, setAdjustmentValue] = useState(0);
-  const [pricingDetails, setPricingDetails] = useState({
-    originalPrice: 0,
-    newPrices: {}, // Change this to store new prices for each selected product
-  });
+function ProductPriceFetcher() {
+  // Dropdown state
+  const [category, setCategory] = useState(''); // for category like 'wine'
+  const [segment, setSegment] = useState(''); // for segment like 'red'
+  const [brand, setBrand] = useState(''); // for brand like 'High Garden'
 
-  // Fetch products based on filters
-  useEffect(() => {
-    const fetchProducts = async () => {
+  // State to store product price
+  const [price, setPrice] = useState(null); 
+
+  // Define categories, segments, and brands
+  const categories = ['Wine', 'Beer', 'Liquor & Spirits', 'Cider', 'Premixed & Ready-to-Drink', 'Other'];
+  const segments = {
+    wine: ['Red', 'White', 'Rosé', 'Orange', 'Sparkling', 'Port/Dessert'],
+    beer: ['Lager', 'Ale', 'Stout', 'IPA', 'Wheat Beer'],
+    liquor : ['Whiskey', 'Vodka', 'Rum', 'Gin'],
+    cider: ['Dry Cider', 'Sweet Cider'],
+    premixed: ['RTD Cocktails', 'Hard Seltzers'],
+    other: ['Miscellaneous'],
+  };
+  const brands = ['High Garden', 'Koyama Wines', 'Lacourte-Godbillon'];
+
+  // Function to fetch product price based on the selections
+  const fetchPrice = async () => {
+    if (category && segment && brand) {  // Fetch only if all selections are made
       try {
-        const response = await fetch(`/api/products?${new URLSearchParams(filters)}`);
-        const data = await response.json();
-        setProducts(data); // Set the products fetched from backend
-        if (data.length > 0) {
-          setPricingDetails(prev => ({
-            ...prev,
-            originalPrice: data[0].price, // Set original price for the first product (or based on selection)
-            newPrices: { [data[0].id]: data[0].price }, // Initialize new prices
-          }));
+        const response = await fetch('http://localhost:5000/api/products');
+        const products = await response.json();
+
+        // Find the product matching the selected category, segment, and brand
+        const selectedProduct = products.find(
+          (product) =>
+            product.category.toLowerCase() === category.toLowerCase() &&
+            product.brand.toLowerCase() === brand.toLowerCase() &&
+            product.title.toLowerCase().includes(segment.toLowerCase())
+        );
+
+        if (selectedProduct) {
+          setPrice(selectedProduct.price); // Set the price of the product
+        } else {
+          setPrice('Product not found');
         }
       } catch (error) {
-        console.error('Error fetching products:', error);
+        console.error('Error fetching product data:', error);
       }
-    };
-
-    fetchProducts();
-  }, [filters]);
-
-  const handleFilterChange = (filterType, filterValue) => {
-    setFilters(prev => ({ ...prev, [filterType]: filterValue }));
-  };
-
-  const handleProductSelect = productId => {
-    setSelectedProducts(prev =>
-      prev.includes(productId)
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    );
-
-    // Update original price based on the selected product
-    const selectedProduct = products.find(p => p.id === productId);
-    if (selectedProduct) {
-      setPricingDetails(prev => ({
-        ...prev,
-        originalPrice: selectedProduct.price,
-        newPrices: { ...prev.newPrices, [productId]: selectedProduct.price }, // Reset new price to original
-      }));
     }
-    console.log('Selected Products:', [...selectedProducts, productId]);
   };
 
-  const handleSelectAll = () => {
-    setSelectedProducts(products.map(product => product.id));
-  };
-
-  const handleAdjustmentChange = (type, value) => {
-    setAdjustmentType(type);
-    setAdjustmentValue(value);
-
-    // Calculate new prices for all selected products
-    const updatedPrices = {};
-    
-    selectedProducts.forEach((productId) => {
-      const product = products.find((p) => p.id === productId);
-      let adjustedPrice = product.price; // Start with the original price
-
-      if (type === 'fixed') {
-        adjustedPrice += parseFloat(value); // Add or subtract fixed amount
-      } else if (type === 'dynamic') {
-        const percentageAdjustment = (parseFloat(value) / 100) * adjustedPrice;
-        adjustedPrice += percentageAdjustment; // Increase or decrease by percentage
-      }
-
-      updatedPrices[productId] = Math.max(adjustedPrice, 0); // Ensure price does not go negative
-    });
-
-    // Update the pricing details with all new prices
-    setPricingDetails(prev => ({
-      ...prev,
-      newPrices: updatedPrices,
-    }));
-
-    // Log the updated prices for debugging
-    console.log('Updated Prices:', updatedPrices);
-  };
+  // Use Effect to fetch the price every time category, segment, or brand changes
+  useEffect(() => {
+    fetchPrice();
+  }, [category, segment, brand]); // Re-run fetch when dropdown values change
 
   return (
-    <div className="App">
-      <h1>Pricing Profile Manager</h1>
-      <ProductFilter filters={filters} onFilterChange={handleFilterChange} />
-      <ProductSelection
-        products={products}
-        onProductSelect={handleProductSelect}
-        selectAll={handleSelectAll}
-        selectedProducts={selectedProducts}
-      />
-      <PriceAdjustment 
-        basePrice={pricingDetails.originalPrice} 
-        adjustmentType={adjustmentType}
-        adjustmentValue={adjustmentValue}
-        onAdjustmentChange={handleAdjustmentChange} 
-      />
-      <PricingSummary
-        originalPrice={pricingDetails.originalPrice}
-        newPrices={pricingDetails.newPrices}
-        selectedProducts={selectedProducts.map(id => products.find(p => p.id === id))} // Pass selected products
-      />
+    <div>
+      <h1>Product Price Finder</h1>
+
+      {/* Category Dropdown */}
+      <div>
+        <label>Category: </label>
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="">Select Category</option>
+          {categories.map((cat, index) => (
+            <option key={index} value={cat.toLowerCase()}>{cat}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Segment Dropdown */}
+      <div>
+        <label>Segment: </label>
+        <select value={segment} onChange={(e) => setSegment(e.target.value)} disabled={!category}>
+          <option value="">Select Segment</option>
+          {category && segments[category]?.map((seg, index) => (
+            <option key={index} value={seg.toLowerCase()}>{seg}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Brand Dropdown */}
+      <div>
+        <label>Brand: </label>
+        <select value={brand} onChange={(e) => setBrand(e.target.value)} disabled={!segment}>
+          <option value="">Select Brand</option>
+          {brands.map((br, index) => (
+            <option key={index} value={br.toLowerCase()}>{br}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Display the price */}
+      <div style={{ marginTop: '20px' }}>
+        {price !== null && <h2>Price: ${price}</h2>}
+      </div>
     </div>
   );
 }
 
-export default App;
+export default ProductPriceFetcher;

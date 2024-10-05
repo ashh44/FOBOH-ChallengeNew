@@ -3,8 +3,12 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { v4: uuidv4 } = require('uuid');
 
-// Initialize Express
+const cors = require('cors');
 const app = express();
+
+// Enable CORS for all routes
+app.use(cors());
+// Initialize Express
 app.use(express.json());
 
 // Swagger setup for API documentation
@@ -27,59 +31,49 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// In-memory products database
-let products = [
-  {
-    id: uuidv4(),
-    title: 'High Garden Pinot Noir 2021',
-    sku: 'HGVPIN216',
-    brand: 'High Garden',
-    category: 'Alcoholic Beverage',
-    subcategory: 'Wine',
-    segment: 'Red',
-    price: 279.06,
-  },
-  {
-    id: uuidv4(),
-    title: 'Koyama Methode Brut Nature NV',
-    sku: 'KOYBRUNV6',
-    brand: 'Koyama Wines',
-    category: 'Alcoholic Beverage',
-    subcategory: 'Wine',
-    segment: 'Sparkling',
-    price: 120.0,
-  },
-  {
-    id: uuidv4(),
-    title: 'Koyama Riesling 2018',
-    sku: 'KOYNR1837',
-    brand: 'Koyama Wines',
-    category: 'Alcoholic Beverage',
-    subcategory: 'Wine',
-    segment: 'Port/Dessert',
-    price: 215.04,
-  },
-  {
-    id: uuidv4(),
-    title: 'Koyama Tussock Riesling 2019',
-    sku: 'KOYRIE19',
-    brand: 'Koyama Wines',
-    category: 'Alcoholic Beverage',
-    subcategory: 'Wine',
-    segment: 'White',
-    price: 215.04,
-  },
-  {
-    id: uuidv4(),
-    title: 'Lacourte-Godbillon Brut Cru NV',
-    sku: 'LACBNATNV6',
-    brand: 'Lacourte-Godbillon',
-    category: 'Alcoholic Beverage',
-    subcategory: 'Wine',
-    segment: 'Sparkling',
-    price: 409.32,
+const sqlite3 = require('sqlite3').verbose();
+
+// Connect to your SQLite database
+let db = new sqlite3.Database('./products.db');
+
+// Fetch products from the SQLite database
+app.get('/api/products', (req, res) => {
+  const { category, brand, segment, search } = req.query;
+
+  let query = "SELECT * FROM products WHERE 1=1"; // Base query
+  let params = []; // Array to hold query parameters
+
+  // Apply filters if they are provided
+  if (category) {
+    query += " AND category = ?";
+    params.push(category);
   }
-];
+  if (segment) {
+    query += " AND segment = ?";
+    params.push(segment);
+  }
+  if (brand) {
+    query += " AND brand = ?";
+    params.push(brand);
+  }
+  if (search) {
+    query += " AND (title LIKE ? OR sku LIKE ?)";
+    params.push(`%${search}%`, `%${search}%`);
+  }
+
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error('Database error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+    console.log('SQL Query:', query); // Log the SQL query for debugging
+    console.log('Result:', rows); // Log the result for debugging
+    res.setHeader('Content-Type', 'application/json');
+    res.json(rows); // Return the products from the database
+  });
+});
+
+
 
 // In-memory pricing profiles
 let pricingProfiles = [];
@@ -116,31 +110,35 @@ app.get('/', (req, res) => {
     res.send('Welcome to the Pricing API! Use /api/products to get the products.');
   });
   
-app.get('/api/products', (req, res) => {
-  const { category, subcategory, segment } = req.query;
-  let filteredProducts = products;
-
-  // Apply filters
-  if (category) {
-    filteredProducts = filteredProducts.filter(p => p.category === category);
-  }
-  if (subcategory) {
-    filteredProducts = filteredProducts.filter(p => p.subcategory === subcategory);
-  }
-  if (segment) {
-    filteredProducts = filteredProducts.filter(p => p.segment === segment);
-  }
-
-  res.json(filteredProducts);
-});
+  app.get('/api/products', (req, res) => {
+    const { category, subcategory, segment, search } = req.query;
+    let filteredProducts = products;
+  
+    // Apply filters
+    if (category) {
+      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === category.toLowerCase());
+    }
+    if (subcategory) {
+      filteredProducts = filteredProducts.filter(p => p.subcategory.toLowerCase() === subcategory.toLowerCase());
+    }
+    if (segment) {
+      filteredProducts = filteredProducts.filter(p => p.segment.toLowerCase() === segment.toLowerCase());
+    }
+    if (search) {
+      filteredProducts = filteredProducts.filter(p => 
+        p.title.toLowerCase().includes(search.toLowerCase()) || 
+        p.sku.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+  
+    res.json(filteredProducts);
+  });
+  
 
 /**
  * @swagger
  * /api/pricing-profile:
- *   post:
- *     summary: Create a pricing profile
- *     description: Create a pricing profile with fixed or percentage adjustments.
- *     requestBody:
+*     requestBody:
  *       content:
  *         application/json:
  *           schema:
@@ -152,17 +150,14 @@ app.get('/api/products', (req, res) => {
  *             properties:
  *               name:
  *                 type: string
- *                 description: Profile name
+ *                 example: "Holiday Discount"
  *               type:
  *                 type: string
  *                 enum: [fixed, percentage]
- *                 description: Type of adjustment
+ *                 example: "percentage"
  *               value:
  *                 type: number
- *                 description: The value of the adjustment (either amount or percentage)
- *     responses:
- *       201:
- *         description: Pricing profile created
+ *                 example: 10
  */
 app.post('/api/pricing-profile', (req, res) => {
   const { name, type, value } = req.body;
@@ -209,8 +204,11 @@ app.post('/api/products/apply-pricing', (req, res) => {
   const product = products.find(p => p.id === productId);
   const profile = pricingProfiles.find(p => p.id === profileId);
 
-  if (!product || !profile) {
-    return res.status(404).json({ message: 'Product or Profile not found' });
+  if (!product) {
+    return res.status(404).json({ message: 'Product not found' });
+  }
+  if (!profile) {
+    return res.status(404).json({ message: 'Profile not found' });
   }
 
   let newPrice = product.price;
@@ -224,6 +222,7 @@ app.post('/api/products/apply-pricing', (req, res) => {
   product.price = newPrice;
   res.json({ ...product, adjustedPrice: newPrice });
 });
+
 
 // Start the server
 const PORT = process.env.PORT || 5000;
