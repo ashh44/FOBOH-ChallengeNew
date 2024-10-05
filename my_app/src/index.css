@@ -160,3 +160,71 @@ button:hover {
   border-color: #007bff; /* Change border color on focus */
   outline: none; /* Remove default outline */
 }
+
+/* Selected Products Container */
+.selectedProductsContainer {
+  margin-top: 20px;
+}
+
+/* Styling for results table */
+.resultsTable {
+  width: 100%;
+  border-collapse: collapse; /* Collapses borders */
+  margin-top: 10px;
+}
+
+.resultsTable th,
+.resultsTable td {
+  border: 1px solid #ddd; /* Light border */
+  padding: 10px; /* Padding for table cells */
+  text-align: left; /* Left-align text */
+}
+
+.resultsTable th {
+  background-color: #007bff; /* Blue background for header */
+  color: white; /* White text for header */
+  font-weight: bold; /* Bold font for header */
+}
+
+.resultsTable tr:nth-child(even) {
+  background-color: #f2f2f2; /* Zebra striping */
+}
+
+.resultsTable tr:hover {
+  background-color: #e6f7ff; /* Light blue hover effect */
+}
+
+/* Total Price Container */
+.totalPriceContainer {
+  margin-top: 20px;
+  font-size: 20px; /* Bigger font size */
+  font-weight: bold; /* Bold text */
+  text-align: center; /* Center the text */
+  color: #333; /* Dark text color */
+}
+
+/* Complete Profile Button Styling */
+.completeProfileButton {
+  display: block; /* Block display for full width */
+  width: 100%;
+  padding: 10px;
+  background-color: #28a745; /* Green color */
+  color: white; /* White text */
+  border: none; /* No border */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer; /* Pointer cursor on hover */
+  margin-top: 10px; /* Space above the button */
+  font-size: 16px; /* Font size for the button */
+  transition: background-color 0.3s; /* Smooth background color transition */
+}
+
+.completeProfileButton:hover {
+  background-color: #218838; /* Darker green on hover */
+}
+
+/* Additional styling for error messages */
+.error {
+  color: #dc3545; /* Red color for errors */
+  text-align: center; /* Center align */
+  margin-top: 10px; /* Space above error message */
+}
