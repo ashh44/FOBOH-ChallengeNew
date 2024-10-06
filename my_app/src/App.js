@@ -179,11 +179,30 @@ function ProductPriceFetcher() {
   }
 };
 
+  const increaseQuantity = (productId) => {
+    setSelectedProducts(prevProducts =>
+      prevProducts.map(product =>
+        product.id === productId ? { ...product, quantity: product.quantity + 1 } : product
+      )
+    );
+  };
+
+  // Function to decrease quantity
+  const decreaseQuantity = (productId) => {
+    setSelectedProducts(prevProducts =>
+      prevProducts.map(product =>
+        product.id === productId && product.quantity > 1 ? { ...product, quantity: product.quantity - 1 } : product
+      )
+    );
+  };
+
+  // Function to remove product
   const removeProduct = productId => {
     setSelectedProducts(prevSelected => 
       prevSelected.filter(product => product.id !== productId)
     );
   };
+
 
   const calculateNewPrice = (productPrice) => {
     let newPrice;
@@ -323,54 +342,60 @@ function ProductPriceFetcher() {
 
      {/* Selected Products and Calculation Results */}
      <div className="selectedProductsContainer">
-  <h2 className="subheading">Selected Products:</h2>
-  {selectedProducts.length > 0 ? (
-    <table className="resultsTable">
-      <thead>
-        <tr>
-          <th>Product Title</th>
-          <th>SKU Code</th>
-          <th>Category</th>
-          <th>Based On Price</th>
-          <th>Adjustment</th>
-          <th>New Price</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {selectedProducts.map(product => {
-          const newPrice = calculateNewPrice(product.price);
-          return (
-            <tr key={product.id}>
-              <td>{product.title}</td>
-              <td>{product.sku}</td>
-              <td>{product.category}</td>
-              <td>${product.price.toFixed(2)}</td> {/* Use product.price for Based On Price */}
-              <td>${adjustmentValue.toFixed(2)}</td>
-              <td>${newPrice}</td>
-              <td>
-                <button onClick={() => removeProduct(product.id)} className="removeButton">
-                  Remove
-                </button>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  ) : (
-    <p>No products selected</p>
-  )}
-</div>
+        <h2 className="subheading">Selected Products:</h2>
+        {selectedProducts.length > 0 ? (
+          <table className="resultsTable">
+            <thead>
+              <tr>
+                <th>Product Title</th>
+                <th>SKU Code</th>
+                <th>Category</th>
+                <th>Based On Price</th>
+                <th>Quantity</th>
+                <th>Adjustment</th>
+                <th>New Price</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedProducts.map(product => {
+                const newPrice = calculateNewPrice(product.price);
+                return (
+                  <tr key={product.id}>
+                    <td>{product.title}</td>
+                    <td>{product.sku}</td>
+                    <td>{product.category}</td>
+                    <td>${product.price.toFixed(2)}</td>
+                    <td>
+                      {/* Quantity Control with + and - buttons */}
+                      <button onClick={() => decreaseQuantity(product.id)} className="quantityButton">-</button>
+                      <span>{product.quantity}</span>
+                      <button onClick={() => increaseQuantity(product.id)} className="quantityButton">+</button>
+                    </td>
+                    <td>${adjustmentValue.toFixed(2)}</td>
+                    <td>${newPrice}</td>
+                    <td>
+                      {/* Remove product button */}
+                      <button onClick={() => removeProduct(product.id)} className="removeButton">
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <p>No products selected</p>
+        )}
+      </div>
 
-<div className="totalPriceContainer">
+      <div className="totalPriceContainer">
         <h2>Total New Price: ${calculateTotalNewPrice()}</h2> {/* Show total new price */}
       </div>
 
       <button className="completeProfileButton">Profile Complete</button>
     </div>
-
-
   );
 }
 

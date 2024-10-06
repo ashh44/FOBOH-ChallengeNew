@@ -228,3 +228,12 @@ button:hover {
   text-align: center; /* Center align */
   margin-top: 10px; /* Space above error message */
 }
+.quantityButton{
+  color: #1c1a1a;
+  background-color: #07ca3b;
+  padding: 5px 5px 5px 5px;
+  margin-left: 1px;
+  border-radius: 60px;
+  margin-right: 1px;
+  cursor: pointer;
+}
