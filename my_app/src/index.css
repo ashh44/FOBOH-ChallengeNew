@@ -237,3 +237,59 @@ button:hover {
   margin-right: 1px;
   cursor: pointer;
 }
+/* Styling for container and headings */
+.container {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.heading, .subheading {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.button {
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  cursor: pointer;
+  margin: 10px 0;
+}
+
+.button:disabled {
+  background-color: #ccc;
+}
+
+.quantityInput {
+  width: 50px;
+  padding: 5px;
+}
+
+.dropdownContainer {
+  margin: 10px 0;
+}
+
+/* Styling for the selected products list */
+.selectedProductsContainer {
+  margin-top: 20px;
+}
+
+.selectedProductsList {
+  list-style-type: none;
+  padding: 0;
+}
+
+.selectedProductItem {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}
+
+.selectedProductItem strong {
+  font-weight: bold;
+  color: #555;
+}

@@ -13,12 +13,16 @@ function ProductPriceFetcher() {
   const [error, setError] = useState('');
 
   // New state variables for price adjustment
+  const [showResultsTable, setShowResultsTable] = useState(false);
+
   const [basedOnPrice, setBasedOnPrice] = useState(0); // Default price set to 500
   const [adjustmentMode, setAdjustmentMode] = useState('fixed'); // Default adjustment mode
   const [adjustmentValue, setAdjustmentValue] = useState(0); // Default adjustment value
   const [adjustmentIncrement, setAdjustmentIncrement] = useState('increase'); // Default increment
+  const [adjustedProducts, setAdjustedProducts] = useState([]);
 
   const [quantityInput, setQuantityInput] = useState(1); // Default quantity
+  const [isDisabled, setIsDisabled] = useState(false); // State for disabling buttons after adding a product
 
   const categories = ['Wine', 'Beer', 'Liquor & Spirits', 'Cider', 'Premixed & Ready-to-Drink', 'Other'];
   const segments = {
@@ -30,6 +34,35 @@ function ProductPriceFetcher() {
     other: ['Miscellaneous'],
   };
   const brands = ['High Garden', 'Koyama Wines', 'Lacourte-Godbillon'];
+
+
+// Radio button functionality
+const handleRadioChange = (type) => {
+  setSearchType(type);
+  setSelectedProducts([]); // Clear selected products when switching modes
+  setIsDisabled(false); // Reset the disabled state when changing modes
+  if (type === 'all') {
+    fetchAllProducts(); // Automatically fetch all products if 'all' is selected
+  }
+};
+
+// Fetch all products for "All Products" mode
+const fetchAllProducts = async () => {
+  setLoading(true);
+  setError('');
+  try {
+    const response = await fetch('http://localhost:5000/api/products');
+    if (!response.ok) throw new Error('Failed to fetch products');
+    
+    const products = await response.json();
+    setSelectedProducts(products); // Add all products to the result table
+  } catch (error) {
+    setError('Error fetching all products. Please try again.');
+    console.error('Error fetching all products:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const search = async () => {
     setLoading(true);
@@ -94,7 +127,8 @@ function ProductPriceFetcher() {
         const selectedProduct = matchingProducts[0];
         const productWithQuantity = { ...selectedProduct, quantity: quantityInput }; // Use input value for quantity
         setSelectedProducts(prevSelected => [...prevSelected, productWithQuantity]);
-        setQuantityInput(1); // Reset quantity input
+        setQuantityInput(1); // Reset quantity input value
+
       } else {
         setError('No products found for the given query.');
       }
@@ -105,6 +139,7 @@ function ProductPriceFetcher() {
       setLoading(false);
     }
   };
+
 
   const searchBySku = async () => {
     setLoading(true);
@@ -123,6 +158,11 @@ function ProductPriceFetcher() {
         const productWithQuantity = { ...productBySku, quantity: quantityInput }; // Use input value for quantity
         setSelectedProducts(prevSelected => [...prevSelected, productWithQuantity]);
         setQuantityInput(1); // Reset quantity input
+
+        if (searchType === 'one') {
+          setIsDisabled(true); // Disable buttons after adding one product in "One Product" mode
+        }
+
       } else {
         setError('No product found for the given SKU');
       }
@@ -134,44 +174,54 @@ function ProductPriceFetcher() {
     }
   };
   
-  
-  
+const addProduct = async () => {
+  if (category && segment && brand) {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch('http://localhost:5000/api/products');
+      if (!response.ok) throw new Error('Failed to fetch products');
+      
+      const products = await response.json();
+      const matchingProduct = products.find(
+        product =>
+          product.category.toLowerCase() === category.toLowerCase() &&
+          product.brand.toLowerCase() === brand.toLowerCase() &&
+          product.title.toLowerCase().includes(segment.toLowerCase())
+      );
 
-// Fetch products by category, segment, or brand, then prompt for quantity
-  const fetchProducts = async () => {
-    if (category && segment && brand) {
-      setLoading(true);
-      setError('');
-      try {
-        const response = await fetch('http://localhost:5000/api/products');
-        if (!response.ok) throw new Error('Network response was not ok');
+      if (matchingProduct) {
+        const newProduct = {
+          id: matchingProduct.id,
+          category: matchingProduct.category,
+          segment,
+          brand: matchingProduct.brand,
+          sku: matchingProduct.sku,
+          price: matchingProduct.price,
+          quantity: quantityInput,
+          title: matchingProduct.title
+        };
+        setSelectedProducts(prevSelected => [...prevSelected, newProduct]);
         
-        const products = await response.json();
-        const matchingProducts = products.filter(
-          product =>
-            product.category.toLowerCase() === category.toLowerCase() &&
-            product.brand.toLowerCase() === brand.toLowerCase() &&
-            product.title.toLowerCase().includes(segment.toLowerCase())
-        );
-
-        if (matchingProducts.length > 0) {
-          matchingProducts.forEach(product => {
-            const productWithQuantity = { ...product, quantity: quantityInput }; // Use input value for quantity
-            setSelectedProducts(prevSelected => {
-              const newProducts = prevSelected.filter(sp => sp.id !== productWithQuantity.id);
-              return [...newProducts, productWithQuantity];
-            });
-          });
-        }
-      } catch (error) {
-        setError('Error fetching product data. Please try again.');
-        console.error('Error fetching product data:', error);
-      } finally {
-        setLoading(false);
+        // Reset input fields
+        setCategory('');
+        setSegment('');
+        setBrand('');
+        setSku('');
+        setQuantityInput(1);
+      } else {
+        setError('No matching product found. Please try different selections.');
       }
+    } catch (error) {
+      setError('Error fetching product data. Please try again.');
+      console.error('Error fetching product data:', error);
+    } finally {
+      setLoading(false);
     }
-  };
-
+  } else {
+    alert("Please select category, segment, and brand.");
+  }
+};
   const increaseQuantity = (productId) => {
     setSelectedProducts(prevProducts =>
       prevProducts.map(product =>
@@ -194,45 +244,76 @@ function ProductPriceFetcher() {
     setSelectedProducts(prevSelected => 
       prevSelected.filter(product => product.id !== productId)
     );
+
+    setIsDisabled(false); // Re-enable buttons when a product is removed in "One Product" mode
+
+  };
+  const handleCheckboxChange = (productId) => {
+    setSelectedProducts(prevProducts =>
+      prevProducts.map(product =>
+        product.id === productId ? { ...product, checked: !product.checked } : product
+      )
+    );
   };
 
 
   const calculateNewPrice = (productPrice) => {
+    if (typeof productPrice !== 'number') {
+      return '0.00';
+    }
     let newPrice;
-    const adjustment = adjustmentMode === 'fixed' ? adjustmentValue : (adjustmentValue / 100) * productPrice;
+    const adjustment = adjustmentMode === 'fixed' 
+      ? adjustmentValue 
+      : (adjustmentValue / 100) * productPrice;
   
     if (adjustmentIncrement === 'increase') {
       newPrice = productPrice + adjustment;
     } else {
       newPrice = productPrice - adjustment;
     }
-    return newPrice.toFixed(2); // Return new price formatted to 2 decimal places
-  };
-  
-  const calculateTotalNewPrice = () => {
-    return selectedProducts.reduce((total, product) => {
-      const newPrice = calculateNewPrice(product.price);
-      return total + parseFloat(newPrice) * product.quantity; // Multiply by quantity
-    }, 0).toFixed(2); // Return total price formatted to 2 decimal places
+    return Math.max(0, newPrice).toFixed(2); // Ensure price doesn't go below 0
   };
 
+  const applyPriceAdjustment = () => {
+    const updatedProducts = selectedProducts.map(product => {
+      if (product.checked) {
+        const newPrice = calculateNewPrice(product.price);
+        return { ...product, adjustedPrice: newPrice };
+      }
+      return { ...product, adjustedPrice: product.price.toFixed(2) };
+    });
+  
+    // Set only the checked products in adjustedProducts
+    setAdjustedProducts(updatedProducts.filter(product => product.checked));
+    setShowResultsTable(true); // Show the final table
+  };
+  
+
+  const calculateTotalNewPrice = () => {
+    return adjustedProducts.reduce((total, product) => {
+      const price = product.adjustedPrice ? parseFloat(product.adjustedPrice) : product.price;
+      return total + price * product.quantity;
+    }, 0).toFixed(2);
+  };
   return (
     <div className="container">
-      <h1 className="heading">Product Price Finder</h1>
+      <h1 className="heading">User Profile Setup</h1>
       {loading && <p>Loading products...</p>}
       {error && <p className="error">{error}</p>}
 
-      <div className="radioContainer">
+   {/* Radio Buttons */}
+   <div className="radioContainer">
         <label>
-          <input type="radio" value="one" checked={searchType === 'one'} onChange={() => setSearchType('one')} /> One Product
+          <input type="radio" value="one" checked={searchType === 'one'} onChange={() => handleRadioChange('one')} /> One Product
         </label>
         <label>
-          <input type="radio" value="multiple" checked={searchType === 'multiple'} onChange={() => setSearchType('multiple')} /> Multiple Products
+          <input type="radio" value="multiple" checked={searchType === 'multiple'} onChange={() => handleRadioChange('multiple')} /> Multiple Products
         </label>
         <label>
-          <input type="radio" value="all" checked={searchType === 'all'} onChange={() => setSearchType('all')} /> All Products
+          <input type="radio" value="all" checked={searchType === 'all'} onChange={() => handleRadioChange('all')} /> All Products
         </label>
       </div>
+
 
       <h2 className="subheading">Search for Products</h2>
       <div className="searchContainer">
@@ -243,9 +324,10 @@ function ProductPriceFetcher() {
           value={searchQuery} 
           onChange={(e) => setSearchQuery(e.target.value)} 
           className="searchBar" 
-          disabled={searchType === 'all'} 
+           disabled={searchType === 'all' || isDisabled} 
         />
-        <button onClick={search} className="button">Search</button>
+        <button onClick={search} className="button" disabled={isDisabled}>Search</button>
+
 
         {/* Search by SKU */}
         <input 
@@ -254,14 +336,14 @@ function ProductPriceFetcher() {
           value={sku} 
           onChange={(e) => setSku(e.target.value)} 
           className="skuInput" 
-          disabled={searchType === 'all'} 
+          disabled={searchType === 'all' || isDisabled}
         />
-        <button onClick={searchBySku} className="button">Search by SKU</button>
+        <button onClick={searchBySku} className="button" disabled={isDisabled}>Search by SKU</button>
       </div>
 
       <div className="dropdownContainer">
         <label>Category:</label>
-        <select value={category} onChange={(e) => setCategory(e.target.value)} disabled={searchType === 'all'}>
+        <select value={category} onChange={(e) => setCategory(e.target.value)} disabled={searchType === 'all' || isDisabled}>
           <option value="">Select Category</option>
           {categories.map((cat, index) => (
             <option key={index} value={cat.toLowerCase()}>{cat}</option>
@@ -271,7 +353,7 @@ function ProductPriceFetcher() {
 
       <div className="dropdownContainer">
         <label>Segment:</label>
-        <select value={segment} onChange={(e) => setSegment(e.target.value)} disabled={!category}>
+        <select value={segment} onChange={(e) => setSegment(e.target.value)} disabled={!category || isDisabled}>
           <option value="">Select Segment</option>
           {category && segments[category]?.map((seg, index) => (
             <option key={index} value={seg.toLowerCase()}>{seg}</option>
@@ -281,7 +363,7 @@ function ProductPriceFetcher() {
 
       <div className="dropdownContainer">
         <label>Brand:</label>
-        <select value={brand} onChange={(e) => setBrand(e.target.value)} disabled={!segment}>
+        <select value={brand} onChange={(e) => setBrand(e.target.value)} disabled={!segment || isDisabled}>
           <option value="">Select Brand</option>
           {brands.map((br, index) => (
             <option key={index} value={br.toLowerCase()}>{br}</option>
@@ -301,13 +383,44 @@ function ProductPriceFetcher() {
         />
       </div>
 
+      {/* Add button to update the list */}
+      <button onClick={addProduct} className="button" disabled={isDisabled}>
+        Add
+      </button>
+  
+
+{/* Selected Products List */}
+<div className="selectedProductsContainer">
+        <h2 className="subheading">Showing Results:</h2>
+        {selectedProducts.length > 0 ? (
+          <ul className="selectedProductsList">
+            {selectedProducts.map((product, index) => (
+              <li key={index} className="selectedProductItem">
+                <input 
+                  type="checkbox" 
+                  checked={product.checked} 
+                  onChange={() => handleCheckboxChange(product.id)} 
+                />
+                <strong>Category:</strong> {product.category} <br />
+                <strong>Segment:</strong> {product.segment} <br />
+                <strong>Brand:</strong> {product.brand} <br />
+                <strong>SKU:</strong> {product.sku} <br />
+                <strong>Price:</strong> ${product.price.toFixed(2)} <br />
+                <strong>Quantity:</strong> {product.quantity}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No products added yet.</p>
+        )}
+      </div>
 
       <div className="dropdownContainer">
         <label>Based On Price:</label>
         <select value={basedOnPrice} onChange={(e) => setBasedOnPrice(Number(e.target.value))}>
           <option value="">Select Base Price</option>
           <option value="">Global Wholesale Price</option>
-          {/* Add more options as needed */}
+         
         </select>
       </div>
 
@@ -340,61 +453,71 @@ function ProductPriceFetcher() {
             <input type="radio" value="decrease" checked={adjustmentIncrement === 'decrease'} onChange={() => setAdjustmentIncrement('decrease')} /> Decrease (-)
           </label>
         </div>
+     
+
+      <button onClick={applyPriceAdjustment} className="button">Apply Price Adjustment</button>
+
       </div>
 
-      <button onClick={fetchProducts} className="button">Fetch Products</button>
+      {showResultsTable && adjustedProducts.length > 0 ? (
+  <div className="selectedProductsContainer">
+    <h2 className="subheading">Selected Products:</h2>
+    <table className="resultsTable">
+      <thead>
+        <tr>
+          <th>Select</th>
+          <th>Product Title</th>
+          <th>SKU Code</th>
+          <th>Category</th>
+          <th>Original Price</th>
+          <th>Adjustment</th>
+          <th>Adjusted Price</th>
+          <th>Quantity</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+  {adjustedProducts.map(product => (
+    <tr key={product.id}>
+      <td>
+        <input 
+          type="checkbox" 
+          checked={product.checked} 
+          onChange={() => handleCheckboxChange(product.id)} 
+          disabled
+        />
+      </td>
+      <td>{product.title}</td>
+      <td>{product.sku}</td>
+      <td>{product.category}</td>
+      <td>${product.price.toFixed(2)}</td>
+      <td>
+        {adjustmentMode === 'fixed' 
+          ? `$${adjustmentValue}` 
+          : `${adjustmentValue}%`
+        }
+      </td>
+      <td>${product.adjustedPrice || product.price.toFixed(2)}</td>
+      <td>
+        <button onClick={() => decreaseQuantity(product.id)} className="quantityButton">-</button>
+        <span>{product.quantity}</span>
+        <button onClick={() => increaseQuantity(product.id)} className="quantityButton">+</button>
+      </td>
+      <td>
+        <button onClick={() => removeProduct(product.id)} className="removeButton">
+          Remove
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
 
-      {/* Selected Products and Calculation Results */}
+    </table>
+  </div>
+) : (
+  <p>No products selected</p>
+)}
 
-     {/* Selected Products and Calculation Results */}
-     <div className="selectedProductsContainer">
-        <h2 className="subheading">Selected Products:</h2>
-        {selectedProducts.length > 0 ? (
-          <table className="resultsTable">
-            <thead>
-              <tr>
-                <th>Product Title</th>
-                <th>SKU Code</th>
-                <th>Category</th>
-                <th>Based On Price</th>
-                <th>Quantity</th>
-                <th>Adjustment</th>
-                <th>New Price</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedProducts.map(product => {
-                const newPrice = calculateNewPrice(product.price);
-                return (
-                  <tr key={product.id}>
-                    <td>{product.title}</td>
-                    <td>{product.sku}</td>
-                    <td>{product.category}</td>
-                    <td>${product.price.toFixed(2)}</td>
-                    <td>
-                      {/* Quantity Control with + and - buttons */}
-                      <button onClick={() => decreaseQuantity(product.id)} className="quantityButton">-</button>
-                      <span>{product.quantity}</span>
-                      <button onClick={() => increaseQuantity(product.id)} className="quantityButton">+</button>
-                    </td>
-                    <td>${adjustmentValue.toFixed(2)}</td>
-                    <td>${newPrice}</td>
-                    <td>
-                      {/* Remove product button */}
-                      <button onClick={() => removeProduct(product.id)} className="removeButton">
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <p>No products selected</p>
-        )}
-      </div>
 
       <div className="totalPriceContainer">
         <h2>Total New Price: ${calculateTotalNewPrice()}</h2> {/* Show total new price */}
