@@ -18,6 +18,8 @@ function ProductPriceFetcher() {
   const [adjustmentValue, setAdjustmentValue] = useState(0); // Default adjustment value
   const [adjustmentIncrement, setAdjustmentIncrement] = useState('increase'); // Default increment
 
+  const [quantityInput, setQuantityInput] = useState(1); // Default quantity
+
   const categories = ['Wine', 'Beer', 'Liquor & Spirits', 'Cider', 'Premixed & Ready-to-Drink', 'Other'];
   const segments = {
     wine: ['Red', 'White', 'Rosé', 'Orange', 'Sparkling', 'Port/Dessert'],
@@ -32,21 +34,21 @@ function ProductPriceFetcher() {
   const search = async () => {
     setLoading(true);
     setError('');
-  
+
     try {
       const response = await fetch('http://localhost:5000/api/products');
       if (!response.ok) throw new Error('Failed to fetch products');
-  
+
       const products = await response.json();
-  
+
       // Convert searchQuery into an array of lowercase words
       const searchTerms = searchQuery.toLowerCase().split(' ').map(term => term.trim()).filter(term => term); // Trim spaces
-  
+
       // Attempt to match search terms to category, segment, and brand
       const matchedCategory = categories.find(cat => searchTerms.includes(cat.toLowerCase()));
       let matchedSegment = '';
       let matchedBrand = '';
-  
+
       // Check for segment match within the matched category
       if (matchedCategory) {
         Object.keys(segments).forEach(segCategory => {
@@ -59,26 +61,26 @@ function ProductPriceFetcher() {
           }
         });
       }
-  
+
       // Check for brand match; handle multi-word brands
       matchedBrand = brands.find(br => searchTerms.join(' ').includes(br.toLowerCase()));
-  
+
       // Ensure all fields (category, segment, brand) are populated
       if (!matchedCategory || !matchedSegment || !matchedBrand) {
         let missingFields = [];
         if (!matchedCategory) missingFields.push('Category');
         if (!matchedSegment) missingFields.push('Segment');
         if (!matchedBrand) missingFields.push('Brand');
-  
+
         alert(`Please complete all required fields: ${missingFields.join(', ')}.`);
         return;
       }
-  
+
       // Set the state values for category, segment, and brand
       setCategory(matchedCategory.toLowerCase());
       setSegment(matchedSegment.toLowerCase());
       setBrand(matchedBrand.toLowerCase());
-  
+
       // Now perform the search with the populated fields
       const matchingProducts = products.filter(product => {
         return (
@@ -87,19 +89,45 @@ function ProductPriceFetcher() {
           product.brand.toLowerCase() === matchedBrand.toLowerCase()
         );
       });
-  
+
       if (matchingProducts.length > 0) {
         const selectedProduct = matchingProducts[0];
-        const quantity = prompt(`Enter quantity for ${selectedProduct.title}:`, 1);
-        if (quantity && !isNaN(quantity) && Number(quantity) > 0) {
-          const productWithQuantity = { ...selectedProduct, quantity: Number(quantity) };
-          setSelectedProducts(prevSelected => [...prevSelected, productWithQuantity]);
-        }
+        const productWithQuantity = { ...selectedProduct, quantity: quantityInput }; // Use input value for quantity
+        setSelectedProducts(prevSelected => [...prevSelected, productWithQuantity]);
+        setQuantityInput(1); // Reset quantity input
       } else {
         setError('No products found for the given query.');
       }
     } catch (error) {
       setError('Error fetching product data. Please try again.');
+      console.error('Error fetching product data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchBySku = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/products');
+      if (!response.ok) throw new Error('Failed to fetch products');
+
+      const products = await response.json();
+
+      // Find the product by SKU
+      const productBySku = products.find(product => product.sku.toLowerCase() === sku.toLowerCase());
+
+      if (productBySku) {
+        const productWithQuantity = { ...productBySku, quantity: quantityInput }; // Use input value for quantity
+        setSelectedProducts(prevSelected => [...prevSelected, productWithQuantity]);
+        setQuantityInput(1); // Reset quantity input
+      } else {
+        setError('No product found for the given SKU');
+      }
+    } catch (error) {
+      setError('Error fetching product data by SKU. Please try again.');
       console.error('Error fetching product data:', error);
     } finally {
       setLoading(false);
@@ -128,14 +156,11 @@ function ProductPriceFetcher() {
 
         if (matchingProducts.length > 0) {
           matchingProducts.forEach(product => {
-            const quantity = prompt(`Enter quantity for ${product.title}:`, 1);
-            if (quantity && !isNaN(quantity) && Number(quantity) > 0) {
-              const productWithQuantity = { ...product, quantity: Number(quantity) };
-              setSelectedProducts(prevSelected => {
-                const newProducts = prevSelected.filter(sp => sp.id !== productWithQuantity.id);
-                return [...newProducts, productWithQuantity];
-              });
-            }
+            const productWithQuantity = { ...product, quantity: quantityInput }; // Use input value for quantity
+            setSelectedProducts(prevSelected => {
+              const newProducts = prevSelected.filter(sp => sp.id !== productWithQuantity.id);
+              return [...newProducts, productWithQuantity];
+            });
           });
         }
       } catch (error) {
@@ -146,38 +171,6 @@ function ProductPriceFetcher() {
       }
     }
   };
-
- // Fetch product by SKU
- const searchBySku = async () => {
-  setLoading(true);
-  setError('');
-
-  try {
-    const response = await fetch('http://localhost:5000/api/products');
-    if (!response.ok) throw new Error('Failed to fetch products');
-
-    const products = await response.json();
-
-    // Find the product by SKU
-    const productBySku = products.find(product => product.sku.toLowerCase() === sku.toLowerCase());
-
-    if (productBySku) {
-      const quantity = prompt(`Enter quantity for ${productBySku.title}:`, 1);
-      if (quantity && !isNaN(quantity) && Number(quantity) > 0) {
-        const productWithQuantity = { ...productBySku, quantity: Number(quantity) };
-        setSelectedProducts(prevSelected => [...prevSelected, productWithQuantity]);
-      }
-      // setSelectedProducts([productBySku]); // Only set the selected product
-    } else {
-      setError('No product found for the given SKU');
-    }
-  } catch (error) {
-    setError('Error fetching product data by SKU. Please try again.');
-    console.error('Error fetching product data:', error);
-  } finally {
-    setLoading(false);
-  }
-};
 
   const increaseQuantity = (productId) => {
     setSelectedProducts(prevProducts =>
@@ -295,6 +288,19 @@ function ProductPriceFetcher() {
           ))}
         </select>
       </div>
+
+      {/* Quantity Input Field */}
+      <div className="dropdownContainer">
+        <label>Quantity:</label>
+        <input 
+          type="number" 
+          value={quantityInput} 
+          onChange={(e) => setQuantityInput(Number(e.target.value))} 
+          min="1"
+          className="quantityInput"
+        />
+      </div>
+
 
       <div className="dropdownContainer">
         <label>Based On Price:</label>
