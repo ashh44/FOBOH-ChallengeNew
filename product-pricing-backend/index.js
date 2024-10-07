@@ -2,23 +2,24 @@ const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { v4: uuidv4 } = require('uuid');
-
 const cors = require('cors');
+const sqlite3 = require('sqlite3').verbose();
+
 const app = express();
 
-// Enable CORS for all routes
 app.use(cors());
-// Initialize Express
 app.use(express.json());
 
-// Swagger setup for API documentation
+let db = new sqlite3.Database('./products.db');
+
+// Swagger setup
 const swaggerOptions = {
   swaggerDefinition: {
     openapi: '3.0.0',
     info: {
       title: 'Pricing API',
       version: '1.0.0',
-      description: 'API for managing products and applying price adjustments'
+      description: 'API for managing products, pricing profiles, and applying price adjustments'
     },
     servers: [
       {
@@ -26,24 +27,87 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./index.js'], // File for Swagger docs
+  apis: ['./index.js'],
 };
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-const sqlite3 = require('sqlite3').verbose();
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Product:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         title:
+ *           type: string
+ *         category:
+ *           type: string
+ *         segment:
+ *           type: string
+ *         brand:
+ *           type: string
+ *         sku:
+ *           type: string
+ *         price:
+ *           type: number
+ *         wholesale_price:
+ *           type: number
+ *     PricingProfile:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         name:
+ *           type: string
+ *         type:
+ *           type: string
+ *           enum: [fixed, percentage]
+ *         value:
+ *           type: number
+ */
 
-// Connect to your SQLite database
-let db = new sqlite3.Database('./products.db');
-
-// Fetch products from the SQLite database
+/**
+ * @swagger
+ * /api/products:
+ *   get:
+ *     summary: Get all products
+ *     description: Retrieve all products or filter by category, brand, segment, and search query.
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: brand
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: segment
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of products
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Product'
+ */
 app.get('/api/products', (req, res) => {
   const { category, brand, segment, search } = req.query;
 
-  let query = "SELECT * FROM products WHERE 1=1"; // Base query
-  let params = []; // Array to hold query parameters
+  let query = "SELECT * FROM products WHERE 1=1";
+  let params = [];
 
-  // Apply filters if they are provided
   if (category) {
     query += " AND category = ?";
     params.push(category);
@@ -66,161 +130,230 @@ app.get('/api/products', (req, res) => {
       console.error('Database error:', err.message);
       return res.status(500).json({ error: err.message });
     }
-    console.log('SQL Query:', query); // Log the SQL query for debugging
-    console.log('Result:', rows); // Log the result for debugging
-    res.setHeader('Content-Type', 'application/json');
-    res.json(rows); // Return the products from the database
+    res.json(rows);
   });
 });
 
-
-
-// In-memory pricing profiles
-let pricingProfiles = [];
-
 /**
  * @swagger
- * /api/products:
- *   get:
- *     summary: Get all products
- *     description: Retrieve all products or filter by category, subcategory, and segment.
- *     parameters:
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *         description: Filter by category
- *       - in: query
- *         name: subcategory
- *         schema:
- *           type: string
- *         description: Filter by subcategory
- *       - in: query
- *         name: segment
- *         schema:
- *           type: string
- *         description: Filter by segment
- *     responses:
- *       200:
- *         description: List of products
- */
-
-// Route for root URL
-app.get('/', (req, res) => {
-    res.send('Welcome to the Pricing API! Use /api/products to get the products.');
-  });
-  
-  app.get('/api/products', (req, res) => {
-    const { category, subcategory, segment, search } = req.query;
-    let filteredProducts = products;
-  
-    // Apply filters
-    if (category) {
-      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === category.toLowerCase());
-    }
-    if (subcategory) {
-      filteredProducts = filteredProducts.filter(p => p.subcategory.toLowerCase() === subcategory.toLowerCase());
-    }
-    if (segment) {
-      filteredProducts = filteredProducts.filter(p => p.segment.toLowerCase() === segment.toLowerCase());
-    }
-    if (search) {
-      filteredProducts = filteredProducts.filter(p => 
-        p.title.toLowerCase().includes(search.toLowerCase()) || 
-        p.sku.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-  
-    res.json(filteredProducts);
-  });
-  
-
-/**
- * @swagger
- * /api/pricing-profile:
-*     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - type
- *               - value
- *             properties:
- *               name:
- *                 type: string
- *                 example: "Holiday Discount"
- *               type:
- *                 type: string
- *                 enum: [fixed, percentage]
- *                 example: "percentage"
- *               value:
- *                 type: number
- *                 example: 10
- */
-app.post('/api/pricing-profile', (req, res) => {
-  const { name, type, value } = req.body;
-
-  const profile = {
-    id: uuidv4(),
-    name,
-    type,
-    value,
-  };
-
-  pricingProfiles.push(profile);
-  res.status(201).json(profile);
-});
-
-/**
- * @swagger
- * /api/products/apply-pricing:
+ * /api/pricing-profiles:
  *   post:
- *     summary: Apply a pricing profile to a product
- *     description: Apply a pricing profile (percentage or fixed) to adjust the price of a product.
+ *     summary: Create a new pricing profile
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - productId
- *               - profileId
- *             properties:
- *               productId:
- *                 type: string
- *                 description: The ID of the product
- *               profileId:
- *                 type: string
- *                 description: The ID of the pricing profile
+ *             $ref: '#/components/schemas/PricingProfile'
+ *     responses:
+ *       201:
+ *         description: Created pricing profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PricingProfile'
+ */
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_name TEXT,
+    product_sku TEXT,
+   
+    adjusted_price REAL
+  
+  )
+`);
+
+// POST endpoint to create a new profile
+// app.post('/api/profiles', (req, res) => {
+//   const { profileName, products } = req.body;
+
+//   const insertProfileQuery = `
+//     INSERT INTO profiles (profile_name, product_sku, adjusted_price)
+//     VALUES (?, ?, ?)
+//   `;
+
+//   // Begin transaction
+//   db.serialize(() => {
+//     db.run('BEGIN TRANSACTION');
+
+//     products.forEach(product => {
+//       db.run(insertProfileQuery, [profileName, product.sku, product.adjustedPrice]); // Only insert sku and adjustedPrice
+//     });
+
+//     db.run('COMMIT', (err) => {
+//       if (err) {
+//         return res.status(500).json({ error: 'Failed to save profile' });
+//       }
+//       res.status(200).json({ message: 'Profile saved successfully' });
+//     });
+//   });
+// });
+
+app.post('/api/profiles', (req, res) => {
+  const { profileId, profileName, products } = req.body;
+
+  const insertProfileQuery = `
+    INSERT INTO profiles (profile_name, product_sku, adjusted_price)
+    VALUES (?, ?, ?)
+  `;
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+
+    products.forEach(product => {
+      db.run(insertProfileQuery, [profileName, product.sku, product.adjustedPrice]);
+    });
+
+    db.run('COMMIT', (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to save profile' });
+      }
+      res.status(200).json({ message: 'Profile updated successfully' });
+    });
+  });
+});
+
+app.put('/api/profiles/:id', (req, res) => {
+  const { id } = req.params;
+  const { products } = req.body;
+
+  // Clear existing products for the profile
+  const deleteExistingQuery = `DELETE FROM profiles WHERE profile_name = ?`;
+  db.run(deleteExistingQuery, [id], (err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to clear existing profile' });
+    }
+
+    const insertProfileQuery = `INSERT INTO profiles (profile_name, product_sku, adjusted_price) VALUES (?, ?, ?)`;
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+
+      products.forEach(product => {
+        db.run(insertProfileQuery, [id, product.sku, product.adjustedPrice]);
+      });
+
+      db.run('COMMIT', (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to update profile' });
+        }
+        res.status(200).json({ message: 'Profile updated successfully' });
+      });
+    });
+  });
+});
+
+
+app.post('/api/pricing-profiles', (req, res) => {
+  const { name, type, value } = req.body;
+  const id = uuidv4();
+
+  db.run('INSERT INTO pricing_profiles (id, name, type, value) VALUES (?, ?, ?, ?)',
+    [id, name, type, value],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.status(201).json({ id, name, type, value });
+    }
+  );
+});
+
+/**
+ * @swagger
+ * /api/pricing-profiles:
+ *   get:
+ *     summary: Get all pricing profiles
  *     responses:
  *       200:
- *         description: Price adjusted
+ *         description: List of pricing profiles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/PricingProfile'
  */
-app.post('/api/products/apply-pricing', (req, res) => {
-  const { productId, profileId } = req.body;
+app.get('/api/pricing-profiles', (req, res) => {
+  db.all('SELECT * FROM pricing_profiles', (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(rows);
+  });
+});
 
-  const product = products.find(p => p.id === productId);
-  const profile = pricingProfiles.find(p => p.id === profileId);
+/**
+ * @swagger
+ * /api/pricing-profiles/{id}:
+ *   put:
+ *     summary: Update a pricing profile
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PricingProfile'
+ *     responses:
+ *       200:
+ *         description: Updated pricing profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PricingProfile'
+ */
+app.put('/api/pricing-profiles/:id', (req, res) => {
+  const { name, type, value } = req.body;
+  const { id } = req.params;
 
-  if (!product) {
-    return res.status(404).json({ message: 'Product not found' });
-  }
-  if (!profile) {
-    return res.status(404).json({ message: 'Profile not found' });
-  }
+  db.run('UPDATE pricing_profiles SET name = ?, type = ?, value = ? WHERE id = ?',
+    [name, type, value, id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Pricing profile not found' });
+      }
+      res.json({ id, name, type, value });
+    }
+  );
+});
 
-  let newPrice = product.price;
-  if (profile.type === 'fixed') {
-    newPrice += profile.value;
-  } else if (profile.type === 'percentage') {
-    newPrice += product.price * (profile.value / 100);
-  }
+/**
+ * @swagger
+ * /api/pricing-profiles/{id}:
+ *   delete:
+ *     summary: Delete a pricing profile
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Pricing profile deleted
+ */
+app.delete('/api/pricing-profiles/:id', (req, res) => {
+  const { id } = req.params;
 
-  // Update product price
-  product.price = newPrice;
-  res.json({ ...product, adjustedPrice: newPrice });
+  db.run('DELETE FROM pricing_profiles WHERE id = ?', id, function(err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Pricing profile not found' });
+    }
+    res.json({ message: 'Pricing profile deleted' });
+  });
 });
 
 

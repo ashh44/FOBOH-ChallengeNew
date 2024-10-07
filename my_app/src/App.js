@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import './index.css'; // Assuming your CSS is in index.css
 
 function ProductPriceFetcher() {
@@ -11,7 +11,8 @@ function ProductPriceFetcher() {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
+  const [selectedProfile, setSelectedProfile] = useState(false);
+  const[profiles, setProfiles] = useState([]);
   // New state variables for price adjustment
   const [showResultsTable, setShowResultsTable] = useState(false);
 
@@ -24,7 +25,7 @@ function ProductPriceFetcher() {
   const [quantityInput, setQuantityInput] = useState(1); // Default quantity
   const [isDisabled, setIsDisabled] = useState(false); // State for disabling buttons after adding a product
 
-  const categories = ['Wine', 'Beer', 'Liquor & Spirits', 'Cider', 'Premixed & Ready-to-Drink', 'Other'];
+  const categories = ['Wine', 'Beer', 'Liquor', 'Cider', 'Premixed & Ready-to-Drink', 'Other'];
   const segments = {
     wine: ['Red', 'White', 'Rosé', 'Orange', 'Sparkling', 'Port/Dessert'],
     beer: ['Lager', 'Ale', 'Stout', 'IPA', 'Wheat Beer'],
@@ -35,6 +36,84 @@ function ProductPriceFetcher() {
   };
   const brands = ['High Garden', 'Koyama Wines', 'Lacourte-Godbillon'];
 
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/pricing-profiles');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setProfiles(data);
+      } catch (error) {
+        console.error("There was a problem fetching the profiles:", error);
+        setError("Failed to load profiles. Please try again later.");
+      }
+    };
+    fetchProfiles();
+  }, []);
+  const handleProfileComplete = async () => {
+    const unselectedProducts = selectedProducts.filter(product => !product.checked);
+  
+    const allProducts = [
+      ...adjustedProducts.map(product => ({
+        sku: product.sku,
+        adjustedPrice: product.adjustedPrice, // Use adjusted price for selected products
+      })),
+      ...unselectedProducts.map(product => ({
+        sku: product.sku,
+        adjustedPrice: product.price, // Use original price for unselected products
+      }))
+    ];
+  
+    const profileName = `Profile_${Date.now()}`;  // Generate a profile name
+  
+    try {
+      if (selectedProfile) {
+        // Update the existing profile with new products
+        const response = await fetch(`http://localhost:5000/api/profiles/${selectedProfile}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            products: allProducts,
+          }),
+        });
+  
+        if (response.ok) {
+          alert('Profile updated successfully!');
+        } else {
+          alert('Failed to update profile');
+        }
+      } else {
+        // Create a new profile and add products
+        const response = await fetch('http://localhost:5000/api/profiles', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            profileName,
+            products: allProducts,
+          }),
+        });
+  
+        if (response.ok) {
+          const newProfile = await response.json(); // Assuming the new profile is returned
+          setProfiles([...profiles, newProfile]); // Add new profile to the dropdown
+          setSelectedProfile(newProfile.id); // Set newly created profile as selected
+          alert('Profile created and saved successfully!');
+        } else {
+          alert('Failed to create profile');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Error saving profile');
+    }
+  };
 
 // Radio button functionality
 const handleRadioChange = (type) => {
@@ -222,22 +301,22 @@ const addProduct = async () => {
     alert("Please select category, segment, and brand.");
   }
 };
-  const increaseQuantity = (productId) => {
-    setSelectedProducts(prevProducts =>
-      prevProducts.map(product =>
-        product.id === productId ? { ...product, quantity: product.quantity + 1 } : product
-      )
-    );
-  };
+  // const increaseQuantity = (productId) => {
+  //   setSelectedProducts(prevProducts =>
+  //     prevProducts.map(product =>
+  //       product.id === productId ? { ...product, quantity: product.quantity + 1 } : product
+  //     )
+  //   );
+  // };
 
-  // Function to decrease quantity
-  const decreaseQuantity = (productId) => {
-    setSelectedProducts(prevProducts =>
-      prevProducts.map(product =>
-        product.id === productId && product.quantity > 1 ? { ...product, quantity: product.quantity - 1 } : product
-      )
-    );
-  };
+  // // Function to decrease quantity
+  // const decreaseQuantity = (productId) => {
+  //   setSelectedProducts(prevProducts =>
+  //     prevProducts.map(product =>
+  //       product.id === productId && product.quantity > 1 ? { ...product, quantity: product.quantity - 1 } : product
+  //     )
+  //   );
+  // };
 
   // Function to remove product
   const removeProduct = productId => {
@@ -300,6 +379,21 @@ const addProduct = async () => {
       <h1 className="heading">User Profile Setup</h1>
       {loading && <p>Loading products...</p>}
       {error && <p className="error">{error}</p>}
+
+       {/* User profile dropdown */}
+       <label htmlFor="profile-select">Select Profile:</label>
+<select
+  id="profile-select"
+  value={selectedProfile}
+  onChange={(e) => setSelectedProfile(e.target.value)}
+>
+  <option value="">Select Profile</option>
+  {Array.isArray(profiles) && profiles.map((profile) => (
+    <option key={profile.id} value={profile.id}>
+      {profile.name}
+    </option>
+  ))}
+</select>
 
    {/* Radio Buttons */}
    <div className="radioContainer">
@@ -418,7 +512,8 @@ const addProduct = async () => {
       <div className="dropdownContainer">
         <label>Based On Price:</label>
         <select value={basedOnPrice} onChange={(e) => setBasedOnPrice(Number(e.target.value))}>
-          <option value="">Select Base Price</option>
+        <option value="">Select Base Price</option>
+          <option value="">current</option>
           <option value="">Global Wholesale Price</option>
          
         </select>
@@ -472,7 +567,7 @@ const addProduct = async () => {
           <th>Original Price</th>
           <th>Adjustment</th>
           <th>Adjusted Price</th>
-          <th>Quantity</th>
+          {/* <th>Quantity</th> */}
           <th>Action</th>
         </tr>
       </thead>
@@ -498,11 +593,11 @@ const addProduct = async () => {
         }
       </td>
       <td>${product.adjustedPrice || product.price.toFixed(2)}</td>
-      <td>
+      {/* <td>
         <button onClick={() => decreaseQuantity(product.id)} className="quantityButton">-</button>
         <span>{product.quantity}</span>
         <button onClick={() => increaseQuantity(product.id)} className="quantityButton">+</button>
-      </td>
+      </td> */}
       <td>
         <button onClick={() => removeProduct(product.id)} className="removeButton">
           Remove
@@ -523,7 +618,10 @@ const addProduct = async () => {
         <h2>Total New Price: ${calculateTotalNewPrice()}</h2> {/* Show total new price */}
       </div>
 
-      <button className="completeProfileButton">Profile Complete</button>
+      <button onClick={handleProfileComplete} className="button">
+  Profile Complete
+</button>
+
     </div>
   );
 }
