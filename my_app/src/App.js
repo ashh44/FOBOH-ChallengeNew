@@ -1,5 +1,5 @@
 import React, { useState,useEffect } from 'react';
-import './index.css'; // Assuming your CSS is in index.css
+import './index.css'; 
 
 function ProductPriceFetcher() {
   const [category, setCategory] = useState('');
@@ -18,7 +18,7 @@ function ProductPriceFetcher() {
   // New state variables for price adjustment
   const [showResultsTable, setShowResultsTable] = useState(false);
 
-  const [basedOnPrice, setBasedOnPrice] = useState(0); // Default price set to 500
+  const [basedOnPrice, setBasedOnPrice] = useState(0); 
   const [adjustmentMode, setAdjustmentMode] = useState('fixed'); // Default adjustment mode
   const [adjustmentValue, setAdjustmentValue] = useState(0); // Default adjustment value
   const [adjustmentIncrement, setAdjustmentIncrement] = useState('increase'); // Default increment
@@ -101,7 +101,7 @@ function ProductPriceFetcher() {
 // Radio button functionality
 const handleRadioChange = (type) => {
   setSearchType(type);
-  setSelectedProducts([]); // Clear selected products when switching modes
+  setSelectedProducts([]); 
   setIsDisabled(false); // Reset the disabled state when changing modes
   if (type === 'all') {
     fetchAllProducts(); 
@@ -164,7 +164,7 @@ const fetchAllProducts = async () => {
       // Check for brand match; handle multi-word brands
       matchedBrand = brands.find(br => searchTerms.join(' ').includes(br.toLowerCase()));
 
-      // Ensure all fields (category, segment, brand) are populated
+      // Ensuring all fields (category, segment, brand) are populated
       if (!matchedCategory || !matchedSegment || !matchedBrand) {
         let missingFields = [];
         if (!matchedCategory) missingFields.push('Category');
@@ -180,7 +180,7 @@ const fetchAllProducts = async () => {
       setSegment(matchedSegment.toLowerCase());
       setBrand(matchedBrand.toLowerCase());
 
-      // Now perform the search with the populated fields
+      // Now performing the search with the populated fields
       const matchingProducts = products.filter(product => {
         return (
           product.category.toLowerCase() === matchedCategory.toLowerCase() &&
@@ -226,7 +226,7 @@ const fetchAllProducts = async () => {
         setQuantityInput(1); // Reset quantity input
 
         if (searchType === 'one') {
-          setIsDisabled(true); // Disable buttons after adding one product in "One Product" mode
+          setIsDisabled(true); // Disabling buttons after adding one product in "One Product" mode
         }
 
       } else {
@@ -288,22 +288,6 @@ const addProduct = async () => {
     alert("Please select category, segment, and brand.");
   }
 };
-  // const increaseQuantity = (productId) => {
-  //   setSelectedProducts(prevProducts =>
-  //     prevProducts.map(product =>
-  //       product.id === productId ? { ...product, quantity: product.quantity + 1 } : product
-  //     )
-  //   );
-  // };
-
-  // // Function to decrease quantity
-  // const decreaseQuantity = (productId) => {
-  //   setSelectedProducts(prevProducts =>
-  //     prevProducts.map(product =>
-  //       product.id === productId && product.quantity > 1 ? { ...product, quantity: product.quantity - 1 } : product
-  //     )
-  //   );
-  // };
 
   // Function to remove product
   const removeProduct = productId => {
@@ -574,7 +558,6 @@ return { ...product, adjustedPrice: parseFloat(newPrice) }; // Store as number
           <th>Original Price</th>
           <th>Adjustment</th>
           <th>Adjusted Price</th>
-          {/* <th>Quantity</th> */}
           <th>Action</th>
         </tr>
       </thead>
@@ -593,7 +576,7 @@ return { ...product, adjustedPrice: parseFloat(newPrice) }; // Store as number
       <td>{product.title}</td>
       <td>{product.sku}</td>
       <td>{product.category}</td>
-      {/* Ensure product.price is a valid number before calling toFixed */}
+      {/* Ensuring product.price is a valid number before calling toFixed */}
       <td>${typeof product.adjustedPrice === 'number' && !isNaN(product.adjustedPrice) 
   ? product.price.toFixed(2) 
   : product.price}</td>
@@ -604,7 +587,7 @@ return { ...product, adjustedPrice: parseFloat(newPrice) }; // Store as number
           : `${adjustmentValue}%`
         }
       </td>
-      {/* Ensure product.adjustedPrice or product.price is a valid number before calling toFixed */}
+      {/* Ensuring product.adjustedPrice or product.price is a valid number before calling toFixed */}
       <td>${product.adjustedPrice && typeof product.adjustedPrice === 'number' && !isNaN(product.adjustedPrice) 
           ? product.adjustedPrice.toFixed(2) 
           : (typeof product.price === 'number' && !isNaN(product.price) 
@@ -629,7 +612,7 @@ return { ...product, adjustedPrice: parseFloat(newPrice) }; // Store as number
 
 
       <div className="totalPriceContainer">
-        <h2>Total New Price: ${calculateTotalNewPrice()}</h2> {/* Show total new price */}
+        <h2>Total New Price: ${calculateTotalNewPrice()}</h2> {/* Showing total new price */}
       </div>
 
       <button onClick={handleProfileComplete} className="button">

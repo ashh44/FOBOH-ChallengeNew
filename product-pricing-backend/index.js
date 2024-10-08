@@ -1,7 +1,7 @@
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
-const { v4: uuidv4 } = require('uuid');
+// const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 
@@ -121,27 +121,6 @@ app.get('/api/profiles/:profileName', (req, res) => {
   });
 });
 
-
-/**
- * @swagger
- * /api/pricing-profiles:
- *   post:
- *     summary: Create a new pricing profile
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/PricingProfile'
- *     responses:
- *       201:
- *         description: Created pricing profile
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PricingProfile'
- */
-
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -151,31 +130,6 @@ db.serialize(() => {
   )`);
 });
 
-// POST endpoint to create a new profile
-// app.post('/api/profiles', (req, res) => {
-//   const { profileName, products } = req.body;
-
-//   const insertProfileQuery = `
-//     INSERT INTO profiles (profile_name, product_sku, adjusted_price)
-//     VALUES (?, ?, ?)
-//   `;
-
-//   // Begin transaction
-//   db.serialize(() => {
-//     db.run('BEGIN TRANSACTION');
-
-//     products.forEach(product => {
-//       db.run(insertProfileQuery, [profileName, product.sku, product.adjustedPrice]); // Only insert sku and adjustedPrice
-//     });
-
-//     db.run('COMMIT', (err) => {
-//       if (err) {
-//         return res.status(500).json({ error: 'Failed to save profile' });
-//       }
-//       res.status(200).json({ message: 'Profile saved successfully' });
-//     });
-//   });
-// });
 
 // Add or update products in profile
 app.post('/api/profiles', (req, res) => {
@@ -228,10 +182,6 @@ app.put('/api/profiles/:id', (req, res) => {
     });
   });
 });
-
-
-
-
 
 // Start the server
 const PORT = process.env.PORT || 5000;
