@@ -111,12 +111,16 @@ app.get('/api/products', (_, res) => {
 
 // Get products for a specific profile
 app.get('/api/profiles/:profileName', (req, res) => {
-  const { profileName } = req.params.profileName;
+  const profileName = req.params.profileName;
+
   db.all("SELECT * FROM profiles WHERE profile_name = ?", [profileName], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(rows);  // This should return all rows for the given profileName
   });
 });
+
 
 /**
  * @swagger

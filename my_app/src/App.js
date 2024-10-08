@@ -310,38 +310,38 @@ const addProduct = async () => {
 
 
   const calculateNewPrice = (productPrice) => {
-    if (typeof productPrice !== 'number') {
-      return '0.00';
+    if (typeof productPrice !== 'number' || isNaN(productPrice)) {
+      return '0';
     }
-    let newPrice;
+    let newPrice = parseFloat(productPrice);
     const adjustment = adjustmentMode === 'fixed' 
-      ? adjustmentValue 
-      : (adjustmentValue / 100) * productPrice;
+      ? parseFloat(adjustmentValue)
+      : (parseFloat(adjustmentValue) / 100) * newPrice;
   
     if (adjustmentIncrement === 'increase') {
-      newPrice = productPrice + adjustment;
+      newPrice += adjustment;
     } else {
-      newPrice = productPrice - adjustment;
+      newPrice -= adjustment;
     }
     return Math.max(0, newPrice).toFixed(2); // Ensure price doesn't go below 0
   };
-
+  
   const applyPriceAdjustment = () => {
     const updatedProducts = selectedProducts.map(product => {
       if (product.checked) {
-        const newPrice = calculateNewPrice(product.price);
-        return { ...product, adjustedPrice: newPrice };
+        const newPrice = calculateNewPrice(parseFloat(product.price)); 
+return { ...product, adjustedPrice: parseFloat(newPrice) }; // Store as number
+
       }
       return { 
         ...product, 
-        adjustedPrice: typeof product.price === 'number' ? product.price.toFixed(2) : '0.00'  // Handle undefined price
+        adjustedPrice: typeof product.price === 'number' ? product.price.toFixed(2) : '0.00'
       };
     });
   
     setAdjustedProducts(updatedProducts.filter(product => product.checked));
-    setShowResultsTable(true); // Show the final table
+    setShowResultsTable(true);
   };
-  
   
 
   const calculateTotalNewPrice = () => {
@@ -483,7 +483,10 @@ const addProduct = async () => {
                 <strong>Segment:</strong> {product.segment} <br />
                 <strong>Brand:</strong> {product.brand} <br />
                 <strong>SKU:</strong> {product.sku} <br />
-                <strong>Price:</strong> ${product.price.toFixed(2)} <br />
+                <strong>Price:</strong> ${typeof product.price === 'number' && !isNaN(product.price) 
+  ? product.price.toFixed(2) 
+  : '0.00'} <br />
+
                 <strong>Quantity:</strong> {product.quantity}
               </li>
             ))}
@@ -555,7 +558,8 @@ const addProduct = async () => {
           <th>Action</th>
         </tr>
       </thead>
-      <tbody>
+
+     <tbody>
   {adjustedProducts.map(product => (
     <tr key={product.id}>
       <td>
@@ -569,14 +573,24 @@ const addProduct = async () => {
       <td>{product.title}</td>
       <td>{product.sku}</td>
       <td>{product.category}</td>
-      <td>${typeof product.price === 'number' ? product.price.toFixed(2) : '0.00'}</td> {/* Fix for undefined price */}
+      {/* Ensure product.price is a valid number before calling toFixed */}
+      <td>${typeof product.adjustedPrice === 'number' && !isNaN(product.adjustedPrice) 
+  ? product.price.toFixed(2) 
+  : product.price}</td>
+
       <td>
         {adjustmentMode === 'fixed' 
           ? `$${adjustmentValue}` 
           : `${adjustmentValue}%`
         }
       </td>
-      <td>${product.adjustedPrice || (typeof product.price === 'number' ? product.price.toFixed(2) : '0.00')}</td> {/* Fix for undefined price */}
+      {/* Ensure product.adjustedPrice or product.price is a valid number before calling toFixed */}
+      <td>${product.adjustedPrice && typeof product.adjustedPrice === 'number' && !isNaN(product.adjustedPrice) 
+          ? product.adjustedPrice.toFixed(2) 
+          : (typeof product.price === 'number' && !isNaN(product.price) 
+              ? product.price.toFixed(2) 
+              : '0.00')}
+      </td>
       <td>
         <button onClick={() => removeProduct(product.id)} className="removeButton">
           Remove
