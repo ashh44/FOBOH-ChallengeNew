@@ -25,8 +25,7 @@ Git for version control
 Installation
 
 Clone the repository:
-Copygit clone https://github.com/your-username/product-price-fetcher.git
-cd product-price-fetcher
+Copygit clone https://github.com/ashh44/FOBOH-ChallengeNew.git
 
 Install backend dependencies:
 Copycd backend
@@ -48,6 +47,16 @@ Copy cd frontend
 npm start
 The React app will run on http://localhost:3000
 Open your browser and navigate to http://localhost:3000 to use the application
+
+To populate your database:
+in command prompt navigate to your "/product-pricing-backend" path
+run -> node createDatabase.js
+
+To check the database tables:
+run sqlite3 products.db
+.tables
+SELECT * FROM products;
+SELECT * FROM profiles;
 
 API Documentation
 The backend API is documented using Swagger. To view the API documentation:
