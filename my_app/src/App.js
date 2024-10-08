@@ -51,7 +51,21 @@ function ProductPriceFetcher() {
       const response = await fetch(`http://localhost:5000/api/profiles/${profileName}`);
       if (!response.ok) throw new Error('Failed to fetch profile products');
       const data = await response.json();
-      setSelectedProducts(data);
+      
+      // Ensure that we're receiving valid product data
+      if (Array.isArray(data) && data.length > 0) {
+        const validProducts = data.filter(product => 
+          product.category && product.segment && product.brand && 
+          product.sku && typeof product.price === 'number'
+        );
+        
+        setSelectedProducts(validProducts);
+        setAdjustedProducts(validProducts);
+      } else {
+        setSelectedProducts([]);
+        setAdjustedProducts([]);
+        console.log('No valid products found for this profile');
+      }
     } catch (error) {
       console.error('Error fetching profile products:', error);
       alert('Failed to load profile products. Please try again.');
@@ -365,24 +379,24 @@ return { ...product, adjustedPrice: parseFloat(newPrice) }; // Store as number
        {/* User profile dropdown */}
       
        <label htmlFor="profile-select">Select Profile:</label>
-      <select
-        id="profile-select"
-        value={selectedProfile}
-        onChange={(e) => {
-          const newProfileId = e.target.value;
-          setSelectedProfile(newProfileId);
-          if (newProfileId) {
-            fetchProfileProducts(newProfileId);
-            setProfileName(newProfileId);
-          } else {
-            setSelectedProducts([]);
-          }
-        }}
-      >
-        <option value="">Select Profile</option>
-        {/* Replace with profiles list as required */}
-        <option value="profile1">Profile 1</option>
-      </select>
+       <select
+  id="profile-select"
+  value={selectedProfile}
+  onChange={(e) => {
+    const newProfileId = e.target.value;
+    setSelectedProfile(newProfileId);
+    if (newProfileId) {
+      fetchProfileProducts(newProfileId);
+      setProfileName(newProfileId);
+    } else {
+      setSelectedProducts([]);
+      setAdjustedProducts([]);
+    }
+  }}
+>
+  <option value="">Select Profile</option>
+  <option value="profile1">Profile 1</option>
+</select>
 
 
    {/* Radio Buttons */}
