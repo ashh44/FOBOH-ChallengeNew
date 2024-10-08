@@ -296,9 +296,15 @@ const addProduct = async () => {
     setSelectedProducts(prevSelected => 
       prevSelected.filter(product => product.id !== productId)
     );
-
-    setIsDisabled(false); // Re-enable buttons when a product is removed in "One Product" mode
-
+    
+    setAdjustedProducts(prevAdjusted => 
+      prevAdjusted.filter(product => product.id !== productId)
+    );
+  
+    // If you're in "One Product" mode, you might want to re-enable the buttons
+    if (searchType === 'one') {
+      setIsDisabled(false);
+    }
   };
   const handleCheckboxChange = (productId) => {
     setSelectedProducts(prevProducts =>
