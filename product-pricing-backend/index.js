@@ -102,34 +102,18 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
  *               items:
  *                 $ref: '#/components/schemas/Product'
  */
-app.get('/api/products', (req, res) => {
-  const { category, brand, segment, search } = req.query;
+app.get('/api/products', (_, res) => {
+  db.all("SELECT * FROM products", (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
 
-  let query = "SELECT * FROM products WHERE 1=1";
-  let params = [];
-
-  if (category) {
-    query += " AND category = ?";
-    params.push(category);
-  }
-  if (segment) {
-    query += " AND segment = ?";
-    params.push(segment);
-  }
-  if (brand) {
-    query += " AND brand = ?";
-    params.push(brand);
-  }
-  if (search) {
-    query += " AND (title LIKE ? OR sku LIKE ?)";
-    params.push(`%${search}%`, `%${search}%`);
-  }
-
-  db.all(query, params, (err, rows) => {
-    if (err) {
-      console.error('Database error:', err.message);
-      return res.status(500).json({ error: err.message });
-    }
+// Get products for a specific profile
+app.get('/api/profiles/:profileName', (req, res) => {
+  const { profileName } = req.params.profileName;
+  db.all("SELECT * FROM profiles WHERE profile_name = ?", [profileName], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 });
@@ -154,16 +138,14 @@ app.get('/api/products', (req, res) => {
  *               $ref: '#/components/schemas/PricingProfile'
  */
 
-db.run(`
-  CREATE TABLE IF NOT EXISTS profiles (
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     profile_name TEXT,
     product_sku TEXT,
-   
     adjusted_price REAL
-  
-  )
-`);
+  )`);
+});
 
 // POST endpoint to create a new profile
 // app.post('/api/profiles', (req, res) => {
@@ -191,25 +173,24 @@ db.run(`
 //   });
 // });
 
+// Add or update products in profile
 app.post('/api/profiles', (req, res) => {
-  const { profileId, profileName, products } = req.body;
-
-  const insertProfileQuery = `
-    INSERT INTO profiles (profile_name, product_sku, adjusted_price)
-    VALUES (?, ?, ?)
-  `;
+  const { profileName, products } = req.body;
 
   db.serialize(() => {
     db.run('BEGIN TRANSACTION');
 
+    // Delete existing entries for the profile
+    db.run('DELETE FROM profiles WHERE profile_name = ?', [profileName]);
+
+    // Insert new products with adjusted prices
+    const insertQuery = `INSERT INTO profiles (profile_name, product_sku, adjusted_price) VALUES (?, ?, ?)`;
     products.forEach(product => {
-      db.run(insertProfileQuery, [profileName, product.sku, product.adjustedPrice]);
+      db.run(insertQuery, [profileName, product.sku, product.adjustedPrice]);
     });
 
     db.run('COMMIT', (err) => {
-      if (err) {
-        return res.status(500).json({ error: 'Failed to save profile' });
-      }
+      if (err) return res.status(500).json({ error: 'Failed to save profile' });
       res.status(200).json({ message: 'Profile updated successfully' });
     });
   });
@@ -245,116 +226,7 @@ app.put('/api/profiles/:id', (req, res) => {
 });
 
 
-app.post('/api/pricing-profiles', (req, res) => {
-  const { name, type, value } = req.body;
-  const id = uuidv4();
 
-  db.run('INSERT INTO pricing_profiles (id, name, type, value) VALUES (?, ?, ?, ?)',
-    [id, name, type, value],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.status(201).json({ id, name, type, value });
-    }
-  );
-});
-
-/**
- * @swagger
- * /api/pricing-profiles:
- *   get:
- *     summary: Get all pricing profiles
- *     responses:
- *       200:
- *         description: List of pricing profiles
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/PricingProfile'
- */
-app.get('/api/pricing-profiles', (req, res) => {
-  db.all('SELECT * FROM pricing_profiles', (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json(rows);
-  });
-});
-
-/**
- * @swagger
- * /api/pricing-profiles/{id}:
- *   put:
- *     summary: Update a pricing profile
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/PricingProfile'
- *     responses:
- *       200:
- *         description: Updated pricing profile
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PricingProfile'
- */
-app.put('/api/pricing-profiles/:id', (req, res) => {
-  const { name, type, value } = req.body;
-  const { id } = req.params;
-
-  db.run('UPDATE pricing_profiles SET name = ?, type = ?, value = ? WHERE id = ?',
-    [name, type, value, id],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Pricing profile not found' });
-      }
-      res.json({ id, name, type, value });
-    }
-  );
-});
-
-/**
- * @swagger
- * /api/pricing-profiles/{id}:
- *   delete:
- *     summary: Delete a pricing profile
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Pricing profile deleted
- */
-app.delete('/api/pricing-profiles/:id', (req, res) => {
-  const { id } = req.params;
-
-  db.run('DELETE FROM pricing_profiles WHERE id = ?', id, function(err) {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Pricing profile not found' });
-    }
-    res.json({ message: 'Pricing profile deleted' });
-  });
-});
 
 
 // Start the server

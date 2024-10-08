@@ -11,8 +11,10 @@ function ProductPriceFetcher() {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedProfile, setSelectedProfile] = useState(false);
-  const[profiles, setProfiles] = useState([]);
+  const [selectedProfile, setSelectedProfile] = useState('');
+  
+  const [profileName, setProfileName] = useState('');
+
   // New state variables for price adjustment
   const [showResultsTable, setShowResultsTable] = useState(false);
 
@@ -25,7 +27,7 @@ function ProductPriceFetcher() {
   const [quantityInput, setQuantityInput] = useState(1); // Default quantity
   const [isDisabled, setIsDisabled] = useState(false); // State for disabling buttons after adding a product
 
-  const categories = ['Wine', 'Beer', 'Liquor', 'Cider', 'Premixed & Ready-to-Drink', 'Other'];
+  const categories = ['Wine', 'Beer', 'Liquor', 'Cider', 'Premixed', 'Other'];
   const segments = {
     wine: ['Red', 'White', 'Rosé', 'Orange', 'Sparkling', 'Port/Dessert'],
     beer: ['Lager', 'Ale', 'Stout', 'IPA', 'Wheat Beer'],
@@ -38,80 +40,47 @@ function ProductPriceFetcher() {
 
 
   useEffect(() => {
-    const fetchProfiles = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/pricing-profiles');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setProfiles(data);
-      } catch (error) {
-        console.error("There was a problem fetching the profiles:", error);
-        setError("Failed to load profiles. Please try again later.");
-      }
-    };
-    fetchProfiles();
-  }, []);
-  const handleProfileComplete = async () => {
-    const unselectedProducts = selectedProducts.filter(product => !product.checked);
+    if (profileName) {
+      fetchProfileProducts(profileName);
+    }
+    
+  }, [profileName]);
   
-    const allProducts = [
-      ...adjustedProducts.map(product => ({
-        sku: product.sku,
-        adjustedPrice: product.adjustedPrice, // Use adjusted price for selected products
-      })),
-      ...unselectedProducts.map(product => ({
-        sku: product.sku,
-        adjustedPrice: product.price, // Use original price for unselected products
-      }))
-    ];
-  
-    const profileName = `Profile_${Date.now()}`;  // Generate a profile name
-  
+  const fetchProfileProducts = async (profileName) => {
     try {
-      if (selectedProfile) {
-        // Update the existing profile with new products
-        const response = await fetch(`http://localhost:5000/api/profiles/${selectedProfile}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            products: allProducts,
-          }),
-        });
+      const response = await fetch(`http://localhost:5000/api/profiles/${profileName}`);
+      if (!response.ok) throw new Error('Failed to fetch profile products');
+      const data = await response.json();
+      setSelectedProducts(data);
+    } catch (error) {
+      console.error('Error fetching profile products:', error);
+      alert('Failed to load profile products. Please try again.');
+    }
+  };
   
-        if (response.ok) {
-          alert('Profile updated successfully!');
-        } else {
-          alert('Failed to update profile');
-        }
-      } else {
-        // Create a new profile and add products
-        const response = await fetch('http://localhost:5000/api/profiles', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            profileName,
-            products: allProducts,
-          }),
-        });
-  
-        if (response.ok) {
-          const newProfile = await response.json(); // Assuming the new profile is returned
-          setProfiles([...profiles, newProfile]); // Add new profile to the dropdown
-          setSelectedProfile(newProfile.id); // Set newly created profile as selected
-          alert('Profile created and saved successfully!');
-        } else {
-          alert('Failed to create profile');
-        }
-      }
+
+  const handleProfileComplete = async () => {
+    const profileData = {
+      profileName,
+      products: adjustedProducts.map(product => ({
+        sku: product.sku,
+        adjustedPrice: product.adjustedPrice
+      }))
+    };
+
+    try {
+      const response = await fetch('http://localhost:5000/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
+
+      if (!response.ok) throw new Error('Failed to save profile');
+      alert('Profile updated successfully!');
+      fetchProfileProducts(profileName);
     } catch (error) {
       console.error('Error saving profile:', error);
-      alert('Error saving profile');
+      alert('Error saving profile. Please try again.');
     }
   };
 
@@ -121,7 +90,11 @@ const handleRadioChange = (type) => {
   setSelectedProducts([]); // Clear selected products when switching modes
   setIsDisabled(false); // Reset the disabled state when changing modes
   if (type === 'all') {
-    fetchAllProducts(); // Automatically fetch all products if 'all' is selected
+    fetchAllProducts(); 
+    // Automatically fetch all products if 'all' is selected
+    setCategory(''); // Clear these fields
+    setSegment('');
+    setBrand('');
   }
 };
 
@@ -359,13 +332,16 @@ const addProduct = async () => {
         const newPrice = calculateNewPrice(product.price);
         return { ...product, adjustedPrice: newPrice };
       }
-      return { ...product, adjustedPrice: product.price.toFixed(2) };
+      return { 
+        ...product, 
+        adjustedPrice: typeof product.price === 'number' ? product.price.toFixed(2) : '0.00'  // Handle undefined price
+      };
     });
   
-    // Set only the checked products in adjustedProducts
     setAdjustedProducts(updatedProducts.filter(product => product.checked));
     setShowResultsTable(true); // Show the final table
   };
+  
   
 
   const calculateTotalNewPrice = () => {
@@ -381,19 +357,27 @@ const addProduct = async () => {
       {error && <p className="error">{error}</p>}
 
        {/* User profile dropdown */}
+      
        <label htmlFor="profile-select">Select Profile:</label>
-<select
-  id="profile-select"
-  value={selectedProfile}
-  onChange={(e) => setSelectedProfile(e.target.value)}
->
-  <option value="">Select Profile</option>
-  {Array.isArray(profiles) && profiles.map((profile) => (
-    <option key={profile.id} value={profile.id}>
-      {profile.name}
-    </option>
-  ))}
-</select>
+      <select
+        id="profile-select"
+        value={selectedProfile}
+        onChange={(e) => {
+          const newProfileId = e.target.value;
+          setSelectedProfile(newProfileId);
+          if (newProfileId) {
+            fetchProfileProducts(newProfileId);
+            setProfileName(newProfileId);
+          } else {
+            setSelectedProducts([]);
+          }
+        }}
+      >
+        <option value="">Select Profile</option>
+        {/* Replace with profiles list as required */}
+        <option value="profile1">Profile 1</option>
+      </select>
+
 
    {/* Radio Buttons */}
    <div className="radioContainer">
@@ -585,19 +569,14 @@ const addProduct = async () => {
       <td>{product.title}</td>
       <td>{product.sku}</td>
       <td>{product.category}</td>
-      <td>${product.price.toFixed(2)}</td>
+      <td>${typeof product.price === 'number' ? product.price.toFixed(2) : '0.00'}</td> {/* Fix for undefined price */}
       <td>
         {adjustmentMode === 'fixed' 
           ? `$${adjustmentValue}` 
           : `${adjustmentValue}%`
         }
       </td>
-      <td>${product.adjustedPrice || product.price.toFixed(2)}</td>
-      {/* <td>
-        <button onClick={() => decreaseQuantity(product.id)} className="quantityButton">-</button>
-        <span>{product.quantity}</span>
-        <button onClick={() => increaseQuantity(product.id)} className="quantityButton">+</button>
-      </td> */}
+      <td>${product.adjustedPrice || (typeof product.price === 'number' ? product.price.toFixed(2) : '0.00')}</td> {/* Fix for undefined price */}
       <td>
         <button onClick={() => removeProduct(product.id)} className="removeButton">
           Remove
@@ -606,6 +585,7 @@ const addProduct = async () => {
     </tr>
   ))}
 </tbody>
+
 
     </table>
   </div>
